@@ -1,5 +1,6 @@
 package com.example.wewatch
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -34,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         observeMovies()
 
         binding.fabAdd.setOnClickListener {
-            val intent = android.content.Intent(this, AddActivity::class.java)
+            val intent = Intent(this, AddActivity::class.java)
             startActivity(intent)
         }
     }
