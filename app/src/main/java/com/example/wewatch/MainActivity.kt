@@ -1,14 +1,13 @@
 package com.example.wewatch
 
-import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.wewatch.data.local.MovieEntity
 import com.example.wewatch.databinding.ActivityMainBinding
 import com.example.wewatch.ui.add.AddActivity
 import com.example.wewatch.ui.main.MainViewModel
@@ -20,42 +19,63 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: MovieAdapter
-    private val selectedMovies = mutableSetOf<MovieEntity>()
+    private val selectedMovies = mutableSetOf<com.example.wewatch.data.local.MovieEntity>()
+
+    companion object {
+        private const val TAG = "MainActivity"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "onCreate started")
+
         binding = ActivityMainBinding.inflate(layoutInflater)
+        Log.d(TAG, "Binding inflated")
+
         setContentView(binding.root)
+        Log.d(TAG, "Content view set")
 
         // Инициализация ViewModel с Factory
         val factory = MainViewModelFactory(this)
         viewModel = ViewModelProvider(this, factory)[MainViewModel::class.java]
+        Log.d(TAG, "ViewModel created")
 
         setupRecyclerView()
+        Log.d(TAG, "RecyclerView setup completed")
+
         observeMovies()
+        Log.d(TAG, "Observer set up")
 
         binding.fabAdd.setOnClickListener {
-            val intent = Intent(this, AddActivity::class.java)
+            Log.d(TAG, "FAB clicked")
+            val intent = android.content.Intent(this, AddActivity::class.java)
             startActivity(intent)
         }
+
+        Log.d(TAG, "onCreate completed")
     }
 
     private fun setupRecyclerView() {
+        Log.d(TAG, "setupRecyclerView called")
         adapter = MovieAdapter { movie, isChecked ->
             if (isChecked) selectedMovies.add(movie) else selectedMovies.remove(movie)
         }
         binding.rvMovies.layoutManager = LinearLayoutManager(this)
         binding.rvMovies.adapter = adapter
+        Log.d(TAG, "RecyclerView configured with adapter")
     }
 
     private fun observeMovies() {
+        Log.d(TAG, "observeMovies called")
         viewModel.movies.observe(this) { movies ->
+            Log.d(TAG, "Movies observed: ${movies.size} items")
             adapter.submitList(movies)
             updateEmptyState(movies.isEmpty())
         }
     }
 
     private fun updateEmptyState(isEmpty: Boolean) {
+        Log.d(TAG, "updateEmptyState: isEmpty=$isEmpty")
         binding.rvMovies.visibility = if (isEmpty) View.GONE else View.VISIBLE
         binding.tvEmptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
         binding.ivEmptyImage.visibility = if (isEmpty) View.VISIBLE else View.GONE

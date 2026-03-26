@@ -19,8 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Название фильма"
-        android:inputType="text"
-        android:enabled="false" />
+        android:inputType="text"/>
 
     <EditText
         android:id="@+id/etYear"
@@ -28,8 +27,7 @@
         android:layout_height="wrap_content"
         android:hint="Год (необязательно)"
         android:inputType="number"
-        android:layout_marginTop="8dp"
-        android:enabled="false" />
+        android:layout_marginTop="8dp"/>
 
     <Button
         android:id="@+id/btnSearch"
