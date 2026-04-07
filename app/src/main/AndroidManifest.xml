@@ -26,5 +26,4 @@
         <activity android:name=".ui.add.AddActivity" />
 
     </application>
-
 </manifest>

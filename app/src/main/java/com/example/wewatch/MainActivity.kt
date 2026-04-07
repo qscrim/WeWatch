@@ -109,6 +109,12 @@ class MainActivity : AppCompatActivity(), MviView<MainState> {
         return super.onOptionsItemSelected(item)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Принудительно обновляем список при возврате в активность
+        viewModel.processIntent(MainIntent.LoadMovies)
+    }
+
     private fun deleteSelected() {
         if (selectedMovies.isEmpty()) return
         viewModel.processIntent(MainIntent.DeleteMovies(selectedMovies.toList()))

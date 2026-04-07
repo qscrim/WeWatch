@@ -26,6 +26,10 @@ abstract class MviViewModel<Intent : MviIntent, UiState : Any>(
         }
     }
 
+    protected suspend fun setState(newState: UiState) {
+        _state.value = newState
+    }
+
     protected abstract suspend fun handleIntent(currentState: UiState, intent: Intent): UiState
     protected abstract fun observeIntents()
 }
