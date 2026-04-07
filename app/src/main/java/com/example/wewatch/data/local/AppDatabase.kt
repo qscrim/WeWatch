@@ -5,7 +5,11 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [MovieEntity::class], version = 1)
+@Database(
+    entities = [MovieEntity::class],
+    version = 2,  // ← Увеличил версию с 1 до 2
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun movieDao(): MovieDao
 
@@ -19,7 +23,10 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "wewatch_database"
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration()  // ← Добавил эту строку!
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

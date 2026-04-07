@@ -3,7 +3,6 @@ package com.example.wewatch.ui.main
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.example.wewatch.data.local.MovieEntity
-import com.example.wewatch.data.repository.MovieMapper
 import com.example.wewatch.di.ServiceLocator
 import com.example.wewatch.domain.model.Movie
 import com.example.wewatch.domain.usecase.AddMovieUseCase
@@ -21,13 +20,11 @@ class MainViewModel(context: Context) : MviViewModel<MainIntent, MainState>(Main
     private val deleteMoviesUseCase = DeleteMoviesUseCase(repository)
 
     init {
-        // Наблюдаем за изменениями в базе данных через UseCase
         viewModelScope.launch {
             getLocalMoviesUseCase.execute(com.example.wewatch.domain.usecase.UseCase.None()).collectLatest { movies ->
                 if (movies.isEmpty()) {
                     setState(MainState.Empty)
                 } else {
-                    // Маппим Domain Movie -> Data MovieEntity для UI
                     val movieEntities = movies.map { movie ->
                         MovieEntity(
                             id = movie.id,
@@ -51,7 +48,6 @@ class MainViewModel(context: Context) : MviViewModel<MainIntent, MainState>(Main
         return when (intent) {
             is MainIntent.LoadMovies -> currentState
             is MainIntent.DeleteMovies -> {
-                // Маппим MovieEntity -> Domain Movie для UseCase
                 val movies = intent.movies.map { entity ->
                     Movie(
                         id = entity.id,
