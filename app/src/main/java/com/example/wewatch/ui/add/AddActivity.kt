@@ -6,12 +6,16 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
-import com.bumptech.glide.Glide
+import androidx.lifecycle.lifecycleScope
 import com.example.wewatch.data.local.MovieEntity
+import com.example.wewatch.data.remote.MovieDetailsResponse
 import com.example.wewatch.databinding.ActivityAddBinding
+import com.example.wewatch.ui.base.MviView
 import com.example.wewatch.ui.search.SearchActivity
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
-class AddActivity : AppCompatActivity() {
+class AddActivity : AppCompatActivity(), MviView<AddState> {
 
     private lateinit var binding: ActivityAddBinding
     private lateinit var viewModel: AddViewModel
@@ -20,59 +24,61 @@ class AddActivity : AppCompatActivity() {
     private var currentId: String = ""
     private var currentGenre: String = ""
 
+    companion object {
+        private const val REQUEST_CODE_SEARCH = 100
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAddBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Инициализация ViewModel
         val factory = AddViewModelFactory(this)
         viewModel = ViewModelProvider(this, factory)[AddViewModel::class.java]
 
+        observeState()
         setupClickListeners()
     }
 
-    private fun setupClickListeners() {
-        binding.btnSearch.setOnClickListener {
-            val title = binding.etTitle.text.toString()
-            if (title.isBlank()) {
-                Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+    private fun observeState() {
+        lifecycleScope.launch {
+            viewModel.state.collectLatest { state ->
+                render(state)
             }
-            val year = binding.etYear.text.toString().takeIf { it.isNotBlank() }
-
-            val intent = Intent(this, SearchActivity::class.java).apply {
-                putExtra("QUERY", title)
-                putExtra("YEAR", year)
-            }
-            startActivityForResult(intent, 100)
-        }
-
-        binding.btnAddMovie.setOnClickListener {
-            saveToDatabase()
         }
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100 && resultCode == RESULT_OK) {
-            val title = data?.getStringExtra("RESULT_TITLE")
-            val year = data?.getStringExtra("RESULT_YEAR")
-            val poster = data?.getStringExtra("RESULT_POSTER")
-            val genre = data?.getStringExtra("RESULT_GENRE") ?: ""
-            val id = data?.getStringExtra("RESULT_ID")
-
-            if (title != null && id != null) {
-                binding.etTitle.setText(title)
-                binding.etYear.setText(year ?: "")
-                currentPoster = poster ?: ""
-                currentId = id
-                currentGenre = genre
-
-                showMovieDetailsSimple(title, year ?: "", poster, genre)
+    override fun render(state: AddState) {
+        when (state) {
+            is AddState.Initial -> {
+                // Начальное состояние
+            }
+            is AddState.Loading -> {
+                showLoading(true)
+            }
+            is AddState.Success -> {
+                showLoading(false)
+                displayMovieDetails(state.movie)
+            }
+            is AddState.Error -> {
+                showLoading(false)
+                Toast.makeText(this, state.message, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun showLoading(show: Boolean) {
+        binding.pbLoading.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
+    private fun displayMovieDetails(movie: MovieDetailsResponse) {
+        binding.etTitle.setText(movie.Title)
+        binding.etYear.setText(movie.Year)
+        currentPoster = movie.Poster ?: ""
+        currentId = movie.imdbID ?: ""
+        currentGenre = movie.Genre ?: ""
+
+        showMovieDetailsSimple(movie.Title ?: "", movie.Year ?: "", movie.Poster, movie.Genre ?: "")
     }
 
     private fun showMovieDetailsSimple(title: String, year: String, poster: String?, genre: String) {
@@ -81,27 +87,69 @@ class AddActivity : AppCompatActivity() {
         binding.btnAddMovie.visibility = View.VISIBLE
 
         if (!poster.isNullOrBlank()) {
-            Glide.with(this).load(poster).into(binding.ivPoster)
+            com.bumptech.glide.Glide.with(this).load(poster).into(binding.ivPoster)
         }
         binding.tvResultInfo.text = "$title ($year)\n$genre"
     }
 
-    private fun saveToDatabase() {
-        if (currentId.isBlank()) {
-            Toast.makeText(this, "Сначала выберите фильм через поиск", Toast.LENGTH_SHORT).show()
+    private fun setupClickListeners() {
+        binding.btnSearch.setOnClickListener {
+            val query = binding.etTitle.text.toString()
+            val year = binding.etYear.text.toString()
+
+            val intent = Intent(this, SearchActivity::class.java).apply {
+                putExtra("QUERY", query)
+                putExtra("YEAR", year)
+            }
+            startActivityForResult(intent, REQUEST_CODE_SEARCH)
+        }
+
+        binding.btnAddMovie.setOnClickListener {
+            saveMovie()
+        }
+    }
+
+    private fun saveMovie() {
+        val title = binding.etTitle.text.toString()
+        val year = binding.etYear.text.toString()
+
+        if (title.isBlank() || currentId.isBlank()) {
+            Toast.makeText(this, "Заполните название фильма", Toast.LENGTH_SHORT).show()
             return
         }
 
         val movie = MovieEntity(
             id = currentId,
-            title = binding.etTitle.text.toString(),
-            year = binding.etYear.text.toString(),
+            title = title,
+            year = year,
             poster = currentPoster,
             genre = currentGenre
         )
 
-        viewModel.addMovieToDatabase(movie)
-        Toast.makeText(this, "Фильм добавлен", Toast.LENGTH_SHORT).show()
+        viewModel.processIntent(AddIntent.SaveMovie(movie))
+        Toast.makeText(this, "Фильм добавлен!", Toast.LENGTH_SHORT).show()
         finish()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_SEARCH && resultCode == RESULT_OK) {
+            val title = data?.getStringExtra("RESULT_TITLE")
+            val year = data?.getStringExtra("RESULT_YEAR")
+            val poster = data?.getStringExtra("RESULT_POSTER")
+            val id = data?.getStringExtra("RESULT_ID")
+            val type = data?.getStringExtra("RESULT_TYPE")
+
+            if (title != null && id != null) {
+                binding.etTitle.setText(title)
+                binding.etYear.setText(year ?: "")
+                currentPoster = poster ?: ""
+                currentId = id
+                currentGenre = type ?: ""
+
+                showMovieDetailsSimple(title, year ?: "", poster, type ?: "")
+            }
+        }
     }
 }

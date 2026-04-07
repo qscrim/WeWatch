@@ -11,6 +11,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.wewatch.data.remote.MovieSearchResult
 import com.example.wewatch.databinding.ActivitySearchBinding
 import com.example.wewatch.ui.base.MviView
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class SearchActivity : AppCompatActivity(), MviView<SearchState> {
 
@@ -45,8 +47,8 @@ class SearchActivity : AppCompatActivity(), MviView<SearchState> {
     }
 
     private fun observeState() {
-        lifecycleScope.launchWhenStarted {
-            viewModel.state.collect { state ->
+        lifecycleScope.launch {
+            viewModel.state.collectLatest { state ->
                 render(state)
             }
         }

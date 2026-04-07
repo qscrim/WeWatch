@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- RecyclerView -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvSearch"
         android:layout_width="0dp"
@@ -24,6 +25,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- TextView для пустого состояния -->
     <TextView
         android:id="@+id/tvEmptyState"
         android:layout_width="wrap_content"

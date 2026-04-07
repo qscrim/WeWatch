@@ -1,63 +1,42 @@
 package com.example.wewatch.ui.add
 
 import android.content.Context
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.example.wewatch.data.local.MovieEntity
-import com.example.wewatch.data.remote.MovieDetailsResponse
 import com.example.wewatch.data.repository.MovieRepository
 import com.example.wewatch.di.ServiceLocator
-import com.example.wewatch.ui.base.BaseViewModel
+import com.example.wewatch.ui.base.MviViewModel
 
-class AddViewModel(context: Context) : BaseViewModel() {
+class AddViewModel(context: Context) : MviViewModel<AddIntent, AddState>(AddState.Initial) {
 
     private val repository: MovieRepository = ServiceLocator.provideRepository(context)
 
-    // Данные выбранного фильма
-    private val _movieData = MutableLiveData<MovieDetailsResponse?>()
-    val movieData: LiveData<MovieDetailsResponse?> = _movieData
-
-    // Состояние UI
-    sealed class UiState {
-        object Initial : UiState()
-        object Loading : UiState()
-        data class Success(val movie: MovieDetailsResponse) : UiState()
-        data class Error(val message: String) : UiState()
+    override fun observeIntents() {
+        // Обработка Intent делегирована в handleIntent
     }
 
-    private val _uiState = MutableLiveData<UiState>()
-    val uiState: LiveData<UiState> = _uiState
-
-    // Метод для получения деталей фильма
-    fun getMovieDetails(imdbID: String) {
-        _uiState.value = UiState.Loading
-
-        launchWhenStarted {
-            try {
-                val details = repository.getMovieDetails(imdbID)
-                _movieData.value = details
-                _uiState.value = UiState.Success(details)
-            } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Ошибка получения данных")
-            }
+    override suspend fun handleIntent(currentState: AddState, intent: AddIntent): AddState {
+        return when (intent) {
+            is AddIntent.LoadMovieDetails -> loadMovieDetails()
+            is AddIntent.SaveMovie -> saveMovie(intent.movie)
+            is AddIntent.LoadMovieData -> loadMovieData(intent.imdbID)
         }
     }
 
-    // Метод для добавления фильма в БД
-    fun addMovieToDatabase(movie: MovieEntity) {
-        launchWhenStarted {
-            repository.addMovieToLocal(movie)
+    private suspend fun loadMovieDetails(): AddState {
+        return AddState.Loading
+    }
+
+    private suspend fun loadMovieData(imdbID: String): AddState {
+        return try {
+            val response = repository.getMovieDetails(imdbID)
+            AddState.Success(response)
+        } catch (e: Exception) {
+            AddState.Error(e.message ?: "Ошибка загрузки")
         }
     }
 
-    // Установка данных из SearchActivity
-    fun setMovieData(title: String, year: String, poster: String, imdbID: String, genre: String) {
-        _movieData.value = MovieDetailsResponse(
-            Title = title,
-            Year = year,
-            Poster = poster,
-            Genre = genre,
-            imdbID = imdbID
-        )
+    private suspend fun saveMovie(movie: MovieEntity): AddState {
+        repository.addMovieToLocal(movie)
+        return state.replayCache.firstOrNull() ?: AddState.Initial
     }
 }

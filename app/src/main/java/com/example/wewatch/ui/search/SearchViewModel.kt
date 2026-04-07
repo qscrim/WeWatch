@@ -5,20 +5,20 @@ import com.example.wewatch.data.remote.MovieSearchResult
 import com.example.wewatch.data.repository.MovieRepository
 import com.example.wewatch.di.ServiceLocator
 import com.example.wewatch.ui.base.MviViewModel
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.first
 
 class SearchViewModel(context: Context) : MviViewModel<SearchIntent, SearchState>(SearchState.Empty) {
 
     private val repository: MovieRepository = ServiceLocator.provideRepository(context)
 
     override fun observeIntents() {
-        // Обработка Intent из UI
+        // Обработка Intent делегирована в handleIntent
     }
 
     override suspend fun handleIntent(currentState: SearchState, intent: SearchIntent): SearchState {
         return when (intent) {
             is SearchIntent.SearchMovies -> searchMovies(intent.query, intent.year)
-            is SearchIntent.SelectMovie -> currentState // Обработка выбора фильма
+            is SearchIntent.SelectMovie -> currentState
         }
     }
 
