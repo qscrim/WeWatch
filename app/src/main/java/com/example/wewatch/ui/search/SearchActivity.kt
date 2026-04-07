@@ -85,13 +85,13 @@ class SearchActivity : AppCompatActivity(), MviView<SearchState> {
         binding.tvEmptyState.visibility = if (show) View.VISIBLE else View.GONE
     }
 
-    private fun returnResult(movie: MovieSearchResult) {
+    private fun returnResult(movie: com.example.wewatch.domain.model.Movie) {
         val resultIntent = Intent().apply {
-            putExtra("RESULT_TITLE", movie.Title)
-            putExtra("RESULT_YEAR", movie.Year)
-            putExtra("RESULT_POSTER", movie.Poster)
-            putExtra("RESULT_ID", movie.imdbID)
-            putExtra("RESULT_TYPE", movie.Type)
+            putExtra("RESULT_TITLE", movie.title)
+            putExtra("RESULT_YEAR", movie.year)
+            putExtra("RESULT_POSTER", movie.poster)
+            putExtra("RESULT_ID", movie.id)
+            putExtra("RESULT_TYPE", movie.genre)
         }
         setResult(RESULT_OK, resultIntent)
         finish()

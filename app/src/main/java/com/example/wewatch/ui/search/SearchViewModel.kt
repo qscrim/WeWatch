@@ -1,18 +1,20 @@
 package com.example.wewatch.ui.search
 
 import android.content.Context
-import com.example.wewatch.data.remote.MovieSearchResult
-import com.example.wewatch.data.repository.MovieRepository
+import com.example.wewatch.data.repository.MovieMapper
 import com.example.wewatch.di.ServiceLocator
+import com.example.wewatch.domain.usecase.GetMovieDetailsUseCase
+import com.example.wewatch.domain.usecase.SearchMoviesUseCase
 import com.example.wewatch.ui.base.MviViewModel
-import kotlinx.coroutines.flow.first
 
 class SearchViewModel(context: Context) : MviViewModel<SearchIntent, SearchState>(SearchState.Empty) {
 
-    private val repository: MovieRepository = ServiceLocator.provideRepository(context)
+    private val repository = ServiceLocator.provideRepository(context)
+    private val searchMoviesUseCase = SearchMoviesUseCase(repository)
+    private val getMovieDetailsUseCase = GetMovieDetailsUseCase(repository)
 
     override fun observeIntents() {
-        // Обработка Intent делегирована в handleIntent
+        // Intent'ы обрабатываются в handleIntent
     }
 
     override suspend fun handleIntent(currentState: SearchState, intent: SearchIntent): SearchState {
@@ -27,8 +29,7 @@ class SearchViewModel(context: Context) : MviViewModel<SearchIntent, SearchState
             if (query.isBlank()) {
                 SearchState.Empty
             } else {
-                val response = repository.searchMoviesOnline(query, year)
-                val movies = response.Search?.toList() ?: emptyList()
+                val movies = searchMoviesUseCase.execute(SearchMoviesUseCase.Params(query, year))
 
                 if (movies.isEmpty()) {
                     SearchState.Empty

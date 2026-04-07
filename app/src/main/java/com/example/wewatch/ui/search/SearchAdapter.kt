@@ -10,11 +10,11 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.wewatch.R
-import com.example.wewatch.data.remote.MovieSearchResult
+import com.example.wewatch.domain.model.Movie
 
 class SearchAdapter(
-    private val onItemClick: (MovieSearchResult) -> Unit
-) : ListAdapter<MovieSearchResult, SearchAdapter.ViewHolder>(SearchDiffCallback()) {
+    private val onItemClick: (Movie) -> Unit
+) : ListAdapter<Movie, SearchAdapter.ViewHolder>(SearchDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -32,26 +32,25 @@ class SearchAdapter(
         private val tvYear: TextView = itemView.findViewById(R.id.tvYear)
         private val tvType: TextView = itemView.findViewById(R.id.tvType)
 
-        fun bind(movie: MovieSearchResult) {
-            tvTitle.text = movie.Title
-            tvYear.text = movie.Year
-            tvType.text = movie.Type
+        fun bind(movie: Movie) {
+            tvTitle.text = movie.title
+            tvYear.text = movie.year
+            tvType.text = movie.genre ?: ""
 
-            Glide.with(itemView.context).load(movie.Poster).into(ivPoster)
+            Glide.with(itemView.context).load(movie.poster).into(ivPoster)
 
             itemView.setOnClickListener {
                 onItemClick(movie)
-                true
             }
         }
     }
 
-    class SearchDiffCallback : DiffUtil.ItemCallback<MovieSearchResult>() {
-        override fun areItemsTheSame(oldItem: MovieSearchResult, newItem: MovieSearchResult): Boolean {
-            return oldItem.imdbID == newItem.imdbID
+    class SearchDiffCallback : DiffUtil.ItemCallback<Movie>() {
+        override fun areItemsTheSame(oldItem: Movie, newItem: Movie): Boolean {
+            return oldItem.id == newItem.id
         }
 
-        override fun areContentsTheSame(oldItem: MovieSearchResult, newItem: MovieSearchResult): Boolean {
+        override fun areContentsTheSame(oldItem: Movie, newItem: Movie): Boolean {
             return oldItem == newItem
         }
     }
