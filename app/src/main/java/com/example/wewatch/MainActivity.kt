@@ -1,81 +1,96 @@
 package com.example.wewatch
 
+import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.wewatch.data.local.MovieEntity
 import com.example.wewatch.databinding.ActivityMainBinding
 import com.example.wewatch.ui.add.AddActivity
+import com.example.wewatch.ui.base.MviView
+import com.example.wewatch.ui.main.MainIntent
+import com.example.wewatch.ui.main.MainState
 import com.example.wewatch.ui.main.MainViewModel
 import com.example.wewatch.ui.main.MainViewModelFactory
 import com.example.wewatch.ui.main.MovieAdapter
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), MviView<MainState> {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: MainViewModel
     private lateinit var adapter: MovieAdapter
-    private val selectedMovies = mutableSetOf<com.example.wewatch.data.local.MovieEntity>()
-
-    companion object {
-        private const val TAG = "MainActivity"
-    }
+    private val selectedMovies = mutableSetOf<MovieEntity>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate started")
-
         binding = ActivityMainBinding.inflate(layoutInflater)
-        Log.d(TAG, "Binding inflated")
-
         setContentView(binding.root)
-        Log.d(TAG, "Content view set")
 
-        // Инициализация ViewModel с Factory
+        // Инициализация ViewModel
         val factory = MainViewModelFactory(this)
         viewModel = ViewModelProvider(this, factory)[MainViewModel::class.java]
-        Log.d(TAG, "ViewModel created")
 
         setupRecyclerView()
-        Log.d(TAG, "RecyclerView setup completed")
+        observeState()
 
-        observeMovies()
-        Log.d(TAG, "Observer set up")
+        // Отправляем Initial Intent
+        viewModel.processIntent(MainIntent.LoadMovies)
 
         binding.fabAdd.setOnClickListener {
-            Log.d(TAG, "FAB clicked")
-            val intent = android.content.Intent(this, AddActivity::class.java)
+            val intent = Intent(this, AddActivity::class.java)
             startActivity(intent)
         }
-
-        Log.d(TAG, "onCreate completed")
     }
 
     private fun setupRecyclerView() {
-        Log.d(TAG, "setupRecyclerView called")
         adapter = MovieAdapter { movie, isChecked ->
             if (isChecked) selectedMovies.add(movie) else selectedMovies.remove(movie)
         }
         binding.rvMovies.layoutManager = LinearLayoutManager(this)
         binding.rvMovies.adapter = adapter
-        Log.d(TAG, "RecyclerView configured with adapter")
     }
 
-    private fun observeMovies() {
-        Log.d(TAG, "observeMovies called")
-        viewModel.movies.observe(this) { movies ->
-            Log.d(TAG, "Movies observed: ${movies.size} items")
-            adapter.submitList(movies)
-            updateEmptyState(movies.isEmpty())
+    private fun observeState() {
+        lifecycleScope.launch {
+            viewModel.state.collectLatest { state ->
+                render(state)
+            }
         }
     }
 
+    override fun render(state: MainState) {
+        when (state) {
+            is MainState.Loading -> {
+                showLoading(true)
+            }
+            is MainState.Success -> {
+                showLoading(false)
+                adapter.submitList(state.movies)
+                updateEmptyState(false)
+            }
+            is MainState.Error -> {
+                showLoading(false)
+                updateEmptyState(true)
+            }
+            is MainState.Empty -> {
+                showLoading(false)
+                updateEmptyState(true)
+            }
+        }
+    }
+
+    private fun showLoading(show: Boolean) {
+        binding.pbLoading.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
     private fun updateEmptyState(isEmpty: Boolean) {
-        Log.d(TAG, "updateEmptyState: isEmpty=$isEmpty")
         binding.rvMovies.visibility = if (isEmpty) View.GONE else View.VISIBLE
         binding.tvEmptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
         binding.ivEmptyImage.visibility = if (isEmpty) View.VISIBLE else View.GONE
@@ -96,7 +111,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun deleteSelected() {
         if (selectedMovies.isEmpty()) return
-        viewModel.deleteMovies(selectedMovies.toList())
+        viewModel.processIntent(MainIntent.DeleteMovies(selectedMovies.toList()))
         selectedMovies.clear()
     }
 }
