@@ -6,11 +6,13 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.wewatch.data.remote.MovieSearchResult
 import com.example.wewatch.databinding.ActivitySearchBinding
+import com.example.wewatch.ui.base.MviView
 
-class SearchActivity : AppCompatActivity() {
+class SearchActivity : AppCompatActivity(), MviView<SearchState> {
 
     private lateinit var binding: ActivitySearchBinding
     private lateinit var viewModel: SearchViewModel
@@ -28,9 +30,10 @@ class SearchActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this, factory)[SearchViewModel::class.java]
 
         setupRecyclerView()
-        observeViewModel()
+        observeState()
 
-        viewModel.searchMovies(query, year)
+        // Отправляем Intent для поиска
+        viewModel.processIntent(SearchIntent.SearchMovies(query, year))
     }
 
     private fun setupRecyclerView() {
@@ -41,24 +44,32 @@ class SearchActivity : AppCompatActivity() {
         binding.rvSearch.adapter = adapter
     }
 
-    private fun observeViewModel() {
-        viewModel.uiState.observe(this) { state ->
-            when (state) {
-                is SearchViewModel.UiState.Loading -> {
-                    showLoading(true)
-                }
-                is SearchViewModel.UiState.Success -> {
-                    showLoading(false)
-                    adapter.submitList(state.movies)
-                }
-                is SearchViewModel.UiState.Error -> {
-                    showLoading(false)
-                    Toast.makeText(this, state.message, Toast.LENGTH_SHORT).show()
-                }
-                is SearchViewModel.UiState.Empty -> {
-                    showLoading(false)
-                    showEmptyState(true)
-                }
+    private fun observeState() {
+        lifecycleScope.launchWhenStarted {
+            viewModel.state.collect { state ->
+                render(state)
+            }
+        }
+    }
+
+    override fun render(state: SearchState) {
+        when (state) {
+            is SearchState.Loading -> {
+                showLoading(true)
+            }
+            is SearchState.Success -> {
+                showLoading(false)
+                adapter.submitList(state.movies)
+                showEmptyState(false)
+            }
+            is SearchState.Error -> {
+                showLoading(false)
+                Toast.makeText(this, state.message, Toast.LENGTH_SHORT).show()
+                showEmptyState(true)
+            }
+            is SearchState.Empty -> {
+                showLoading(false)
+                showEmptyState(true)
             }
         }
     }

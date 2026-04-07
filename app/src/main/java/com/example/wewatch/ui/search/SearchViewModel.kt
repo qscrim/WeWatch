@@ -1,52 +1,43 @@
 package com.example.wewatch.ui.search
 
 import android.content.Context
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.wewatch.data.remote.MovieSearchResult
 import com.example.wewatch.data.repository.MovieRepository
 import com.example.wewatch.di.ServiceLocator
-import kotlinx.coroutines.launch
+import com.example.wewatch.ui.base.MviViewModel
+import kotlinx.coroutines.flow.firstOrNull
 
-class SearchViewModel(context: Context) : ViewModel() {
+class SearchViewModel(context: Context) : MviViewModel<SearchIntent, SearchState>(SearchState.Empty) {
 
     private val repository: MovieRepository = ServiceLocator.provideRepository(context)
 
-    sealed class UiState {
-        object Loading : UiState()
-        data class Success(val movies: List<MovieSearchResult>) : UiState()
-        data class Error(val message: String) : UiState()
-        object Empty : UiState()
+    override fun observeIntents() {
+        // Обработка Intent из UI
     }
 
-    private val _uiState = MutableLiveData<UiState>()
-    val uiState: LiveData<UiState> = _uiState
-
-    fun searchMovies(query: String, year: String? = null) {
-        if (query.isBlank()) {
-            _uiState.value = UiState.Empty
-            return
+    override suspend fun handleIntent(currentState: SearchState, intent: SearchIntent): SearchState {
+        return when (intent) {
+            is SearchIntent.SearchMovies -> searchMovies(intent.query, intent.year)
+            is SearchIntent.SelectMovie -> currentState // Обработка выбора фильма
         }
+    }
 
-        _uiState.value = UiState.Loading
-
-        viewModelScope.launch {
-            try {
+    private suspend fun searchMovies(query: String, year: String?): SearchState {
+        return try {
+            if (query.isBlank()) {
+                SearchState.Empty
+            } else {
                 val response = repository.searchMoviesOnline(query, year)
-
-                // Извлекаем список фильмов из SearchResponse
                 val movies = response.Search?.toList() ?: emptyList()
 
                 if (movies.isEmpty()) {
-                    _uiState.value = UiState.Empty
+                    SearchState.Empty
                 } else {
-                    _uiState.value = UiState.Success(movies)
+                    SearchState.Success(movies)
                 }
-            } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Ошибка поиска")
             }
+        } catch (e: Exception) {
+            SearchState.Error(e.message ?: "Ошибка поиска")
         }
     }
 }

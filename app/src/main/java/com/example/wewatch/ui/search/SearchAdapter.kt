@@ -39,7 +39,7 @@ class SearchAdapter(
 
             Glide.with(itemView.context).load(movie.Poster).into(ivPoster)
 
-            itemView.setOnLongClickListener {
+            itemView.setOnClickListener {
                 onItemClick(movie)
                 true
             }
