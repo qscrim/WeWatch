@@ -8,8 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.wewatch.data.local.MovieEntity
-import com.example.wewatch.data.remote.MovieDetailsResponse
 import com.example.wewatch.databinding.ActivityAddBinding
+import com.example.wewatch.domain.model.Movie
 import com.example.wewatch.ui.base.MviView
 import com.example.wewatch.ui.search.SearchActivity
 import kotlinx.coroutines.flow.collectLatest
@@ -20,9 +20,7 @@ class AddActivity : AppCompatActivity(), MviView<AddState> {
     private lateinit var binding: ActivityAddBinding
     private lateinit var viewModel: AddViewModel
 
-    private var currentPoster: String = ""
-    private var currentId: String = ""
-    private var currentGenre: String = ""
+    private var currentMovie: Movie? = null
 
     companion object {
         private const val REQUEST_CODE_SEARCH = 100
@@ -71,14 +69,12 @@ class AddActivity : AppCompatActivity(), MviView<AddState> {
         binding.pbLoading.visibility = if (show) View.VISIBLE else View.GONE
     }
 
-    private fun displayMovieDetails(movie: MovieDetailsResponse) {
-        binding.etTitle.setText(movie.Title)
-        binding.etYear.setText(movie.Year)
-        currentPoster = movie.Poster ?: ""
-        currentId = movie.imdbID ?: ""
-        currentGenre = movie.Genre ?: ""
+    private fun displayMovieDetails(movie: Movie) {
+        currentMovie = movie
+        binding.etTitle.setText(movie.title)
+        binding.etYear.setText(movie.year)
 
-        showMovieDetailsSimple(movie.Title ?: "", movie.Year ?: "", movie.Poster, movie.Genre ?: "")
+        showMovieDetailsSimple(movie.title, movie.year, movie.poster, movie.genre ?: "")
     }
 
     private fun showMovieDetailsSimple(title: String, year: String, poster: String?, genre: String) {
@@ -113,17 +109,17 @@ class AddActivity : AppCompatActivity(), MviView<AddState> {
         val title = binding.etTitle.text.toString()
         val year = binding.etYear.text.toString()
 
-        if (title.isBlank() || currentId.isBlank()) {
+        if (title.isBlank() || currentMovie == null) {
             Toast.makeText(this, "Заполните название фильма", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val movie = MovieEntity(
-            id = currentId,
+        val movie = Movie(
+            id = currentMovie!!.id,
             title = title,
             year = year,
-            poster = currentPoster,
-            genre = currentGenre
+            poster = currentMovie!!.poster,
+            genre = currentMovie!!.genre
         )
 
         viewModel.processIntent(AddIntent.SaveMovie(movie))
@@ -139,16 +135,21 @@ class AddActivity : AppCompatActivity(), MviView<AddState> {
             val year = data?.getStringExtra("RESULT_YEAR")
             val poster = data?.getStringExtra("RESULT_POSTER")
             val id = data?.getStringExtra("RESULT_ID")
-            val type = data?.getStringExtra("RESULT_TYPE")
+            val genre = data?.getStringExtra("RESULT_TYPE")
 
             if (title != null && id != null) {
+                currentMovie = Movie(
+                    id = id,
+                    title = title,
+                    year = year ?: "",
+                    poster = poster,
+                    genre = genre
+                )
+
                 binding.etTitle.setText(title)
                 binding.etYear.setText(year ?: "")
-                currentPoster = poster ?: ""
-                currentId = id
-                currentGenre = type ?: ""
 
-                showMovieDetailsSimple(title, year ?: "", poster, type ?: "")
+                showMovieDetailsSimple(title, year ?: "", poster, genre ?: "")
             }
         }
     }
